@@ -29,5 +29,12 @@ return [
         'secret' => env('AWS_SECRET_ACCESS_KEY'),
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
+    'openai' => [
+    'key' => env('OPENAI_API_KEY'),
+],
+ 'gemini' => [
+        'key' => env('GEMINI_API_KEY'),
+    ],
+
 
 ];

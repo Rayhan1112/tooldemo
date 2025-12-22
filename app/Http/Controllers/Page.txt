@@ -1,0 +1,165 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+
+class PageController extends Controller
+{
+    public function index()
+    {
+        return view('single-page');
+    }
+
+    public function generateDescription(Request $request)
+    {
+        $request->validate([
+            'domain' => 'required|string|max:255',
+            'about'  => 'required|string|max:1000',
+        ]);
+
+        try {
+            $client = \OpenAI::client(config('services.openai.key'));
+
+            $prompt = <<<PROMPT
+You are a professional domain valuation analyst, brand strategist, and market researcher.
+
+TASK:
+Generate a comprehensive professional domain evaluation report with the following sections:
+1. Executive Summary (Introduction Report)
+2. Market Research & Analysis (Google Research-style)
+3. Trademark Research
+4. Keyword Search Volume Research
+5. Competitor Research
+6. Valuation & Commercial Assessment
+
+INPUT:
+Domain: {$request->domain}
+About: {$request->about}
+
+OUTPUT REQUIREMENTS:
+- Return VALID JSON only
+- Do NOT include markdown, comments, or explanations
+- Use natural, professional business language
+- Keep output comprehensive yet concise
+
+JSON STRUCTURE (follow exactly):
+
+{
+  "executive_summary": {
+    "title": "Professional Domain Evaluation Report: {$request->domain}",
+    "introduction": "A comprehensive 3-4 sentence executive summary introducing the domain, highlighting its core value proposition, brand potential, and strategic significance in today's digital marketplace.",
+    "key_highlights": [
+      "Primary highlight about the domain's strength",
+      "Secondary highlight about market potential",
+      "Tertiary highlight about commercial viability"
+    ]
+  },
+  "market_research": {
+    "industry_analysis": "Detailed analysis of relevant industry trends, market demand patterns, and competitive landscape that validate the domain's commercial potential. Include data-backed insights similar to professional market research reports.",
+    "seo_potential": "Analysis of search engine optimization opportunities, keyword relevance, and organic traffic potential based on the domain name and its relation to trending topics.",
+    "competitive_landscape": "Overview of competing domains, market saturation levels, and differentiation factors that position this domain favorably in the marketplace."
+  },
+  "trademark_research": {
+    "conflict_analysis": "Analysis of potential trademark conflicts, existing registered trademarks, and legal risks associated with the domain name. Include recommendations for mitigating any identified risks.",
+    "brand_safety": "Assessment of brand safety factors, including likelihood of consumer confusion, trademark similarity issues, and potential legal challenges that could arise from using this domain for commercial purposes."
+  },
+  "keyword_research": {
+    "search_volume": "Analysis of search volume data for keywords related to the domain name, including monthly search estimates, competition levels, and seasonal trends that indicate commercial potential.",
+    "cpc_analysis": "Examination of cost-per-click (CPC) data for related keywords, indicating the commercial value and advertiser demand for terms associated with this domain.",
+    "opportunity_keywords": [
+      "High-value keyword opportunity related to the domain",
+      "Secondary keyword opportunity with commercial potential",
+      "Long-tail keyword opportunity with lower competition"
+    ]
+  },
+  "competitor_research": {
+    "analysis": "Analysis of direct and indirect competitors in the domain market space, including their pricing strategies, market positioning, and competitive advantages.",
+    "competitors": [
+      { "name": "Competitor Company A", "domain": "exampleA.com", "price": "$1,500 - $2,500", "strategy": "Premium brand positioning" },
+      { "name": "Competitor Company B", "domain": "exampleB.com", "price": "$800 - $1,200", "strategy": "Mid-market approach" },
+      { "name": "Competitor Company C", "domain": "exampleC.com", "price": "$2,000 - $4,000", "strategy": "Enterprise-focused" }
+    ]
+  },
+  "valuation": {
+    "title": "The Domain Name {$request->domain} Is For Sale",
+    "about": "One clear, professional paragraph (3–4 sentences) explaining branding strength, memorability, commercial appeal, and business value of the domain.",
+    "expected_price": "Realistic USD price or price range based on real-world domain market factors such as length, keyword quality, extension, and demand.",
+    "top_uses": [
+      { "industry": "Industry name", "use": "Specific, realistic use case" },
+      { "industry": "Industry name", "use": "Specific, realistic use case" },
+      { "industry": "Industry name", "use": "Specific, realistic use case" }
+    ],
+    "industries": [
+      "Industry name",
+      "Industry name",
+      "Industry name",
+      "Industry name",
+      "Industry name"
+    ]
+  }
+}
+
+VALUATION RULES:
+- Short, brandable .com domains → higher valuation
+- Niche or descriptive domains → mid-range valuation
+- Country-code or longer domains → conservative pricing
+- Do NOT exaggerate prices unrealistically
+- Avoid famous brand comparisons
+
+FINAL CHECK:
+- Output must be valid JSON
+- No trailing commas
+- No extra text before or after JSON
+
+PROMPT;
+
+            $response = $client->chat()->create([
+                'model' => 'gpt-4o-mini',
+                'messages' => [
+                    ['role' => 'user', 'content' => $prompt],
+                ],
+
+                // 🔥 SPEED OPTIMIZATIONS
+                'temperature' => 0.3,
+                'max_tokens' => 1000,
+
+                // 🔒 Force valid JSON (less thinking, faster)
+                'response_format' => [
+                    'type' => 'json_object'
+                ],
+            ]);
+
+            $content = $response->choices[0]->message->content;
+            $json = json_decode($content, true);
+
+            if (!is_array($json) || !isset($json['valuation'])) {
+                // Log the actual response for debugging
+                Log::error('Invalid JSON response from OpenAI', [
+                    'response' => $content,
+                    'parsed_json' => $json
+                ]);
+                throw new \Exception('Invalid JSON structure from OpenAI');
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $json
+            ]);
+
+        } catch (\Throwable $e) {
+            Log::error('OpenAI Error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            // Return proper error response instead of sample data
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to generate domain report. Please check your API configuration and try again.',
+                'details' => $e->getMessage()
+            ], 500);
+        }
+    }
+}
