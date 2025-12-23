@@ -125,8 +125,8 @@
             alert('Please enter an email address');
             return;
         }
-        
-        const emailRegex = /^[\\w\\.-]+@[\\w\\.-]+\\.[\\w\\.-]+$/;
+                
+        const emailRegex = /^[\w\.-]+@[\w\.-]+\.[\w\.-]+$/;
         if (!emailRegex.test(email)) {
             alert('Please enter a valid email address');
             return;
@@ -290,8 +290,8 @@
         }
         
         let allValid = true;
-        const emailRegex = /^[\\w\\.-]+@+?[\\w\\.-]+\\.[\\w\\.-]+$/;
-        
+        const emailRegex = /^[\w\.-]+@[\w\.-]+\.[\w\.-]+$/;
+                
         recipients.forEach(email => {
             if (!emailRegex.test(email.trim())) {
                 allValid = false;
