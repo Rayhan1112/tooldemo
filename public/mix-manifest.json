@@ -1,4 +1,6 @@
 {
     "/js/app.js": "/js/app.js",
-    "/css/app.css": "/css/app.css"
+    "/css/app.css": "/css/app.css",
+    "/js/jspdf.umd.min.js": "/js/jspdf.umd.min.js",
+    "/js/html2canvas.min.js": "/js/html2canvas.min.js"
 }

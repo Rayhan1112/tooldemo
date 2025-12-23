@@ -271,6 +271,10 @@
                     <li class="nav-item">
                         <a class="nav-link" href="#">Startups</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/email-scheduler">📧 Email Scheduler</a>
+                    </li>
+
                 </ul>
                 <ul class="navbar-nav">
                     <!-- Simplified navigation for single page application -->

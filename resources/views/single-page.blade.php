@@ -42,9 +42,14 @@
                         <div class="card-header bg-primary text-white py-3">
                             <div class="d-flex justify-content-between align-items-center">
                                 <h3 class="mb-0">Domain Evaluation Report</h3>
-                                <button id="printBtn" class="btn btn-light btn-sm">
-                                    <i class="fas fa-print"></i> Print Report
-                                </button>
+                                <div class="btn-group">
+                                    <button id="printBtn" class="btn btn-light btn-sm">
+                                        <i class="fas fa-print"></i> Print Report
+                                    </button>
+                                    <button id="downloadPdfBtn" class="btn btn-success btn-sm">
+                                        <i class="fas fa-file-pdf"></i> Download PDF
+                                    </button>
+                                </div>
                             </div>
                         </div>
                         <div class="card-body">
@@ -203,6 +208,8 @@
     @endsection
 
     @section('scripts')
+    <script src="{{ asset('js/jspdf.umd.min.js') }}"></script>
+    <script src="{{ asset('js/html2canvas.min.js') }}"></script>
     <script>
     const form = document.getElementById('domainForm');
     const generateBtn = document.getElementById('generateBtn');
@@ -427,6 +434,96 @@ const finalSummaryText = document.getElementById('finalSummaryText');
             result.classList.add('d-none');
         }
         
+    });
+    
+    // PDF Download functionality
+    document.getElementById('downloadPdfBtn').addEventListener('click', function() {
+        if (output.classList.contains('d-none')) {
+            alert('Please generate a report first before downloading PDF.');
+            return;
+        }
+        
+        // Get the report content (the output section)
+        const reportContent = document.querySelector('#output').cloneNode(true);
+        
+        // Remove loader if present
+        const loaderInClone = reportContent.querySelector('#loader');
+        if (loaderInClone) {
+            loaderInClone.remove();
+        }
+        
+        // Create a temporary container for the PDF content
+        const tempContainer = document.createElement('div');
+        tempContainer.style.cssText = 'position: absolute; left: -9999px; top: -9999px; width: 210mm; padding: 15mm; font-family: Arial, sans-serif; background: white; color: black;';
+        
+        // Add a header with the report title
+        const header = document.createElement('div');
+        header.innerHTML = '<h1 style="text-align: center; margin-bottom: 10px; font-size: 24px; color: #007bff;">Domain Evaluation Report</h1>';
+        const domainName = document.getElementById('domain').value || 'domain-report';
+        header.innerHTML += `<p style="text-align: center; margin-bottom: 20px; font-size: 16px;">Domain: ${domainName}</p>`;
+        
+        // Add table of contents
+        const toc = document.createElement('div');
+        toc.style.cssText = 'margin: 20px 0; padding: 15px; background-color: #f8f9fa; border-radius: 5px;';
+        toc.innerHTML = '<h3 style="margin-top: 0;">Table of Contents</h3><ul style="margin-bottom: 0;">' +
+            '<li><a href="#executive-summary" style="text-decoration: none; color: #007bff;">Executive Summary</a></li>' +
+            '<li><a href="#market-research" style="text-decoration: none; color: #007bff;">Market Research & Analysis</a></li>' +
+            '<li><a href="#trademark-research" style="text-decoration: none; color: #007bff;">Trademark Research</a></li>' +
+            '<li><a href="#keyword-research" style="text-decoration: none; color: #007bff;">Keyword Search Volume Research</a></li>' +
+            '<li><a href="#competitor-research" style="text-decoration: none; color: #007bff;">Competitor Research</a></li>' +
+            '<li><a href="#valuation" style="text-decoration: none; color: #007bff;">Valuation & Commercial Assessment</a></li>' +
+            '<li><a href="#final-summary" style="text-decoration: none; color: #007bff;">Final Summary</a></li>' +
+            '</ul>';
+        
+        tempContainer.appendChild(header);
+        tempContainer.appendChild(toc);
+        tempContainer.appendChild(reportContent);
+        
+        document.body.appendChild(tempContainer);
+        
+        // Use html2canvas to capture the content
+        html2canvas(tempContainer, {
+            scale: 2,
+            useCORS: true,
+            allowTaint: true,
+            backgroundColor: '#ffffff',
+            scrollX: 0,
+            scrollY: 0,
+            logging: false
+        }).then(canvas => {
+            // Remove the temporary container
+            document.body.removeChild(tempContainer);
+            
+            // Create PDF
+            const {jsPDF} = window.jspdf;
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const imgData = canvas.toDataURL('image/jpeg', 0.9);
+            
+            // Calculate dimensions to fit A4
+            const imgWidth = 210 - 20; // A4 width minus margins
+            const pageHeight = 297 - 20; // A4 height minus margins
+            const imgHeight = canvas.height * imgWidth / canvas.width;
+            let heightLeft = imgHeight;
+            let position = 10;
+            
+            // Add first page
+            pdf.addImage(imgData, 'JPEG', 10, position, imgWidth, imgHeight);
+            heightLeft -= pageHeight;
+            
+            // Add additional pages if needed
+            while (heightLeft >= 0) {
+                position = heightLeft - imgHeight;
+                pdf.addPage();
+                pdf.addImage(imgData, 'JPEG', 10, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+            }
+            
+            // Save the PDF
+            pdf.save(domainName + '-evaluation-report.pdf');
+        }).catch(error => {
+            console.error('Error generating PDF:', error);
+            alert('Error generating PDF. Please try again.');
+        });
     });
     </script>
     @endsection

@@ -1,8 +1,12 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\DomainReportController;
+use App\Http\Controllers\EmailSchedulerController;
+use App\Http\Controllers\ScheduledEmailController;
+
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -18,6 +22,53 @@ use App\Http\Controllers\DomainReportController;
 Route::get('/', [PageController::class, 'index']);
 Route::post('/generate-description', [App\Http\Controllers\PageController::class, 'generateDescription']);
 
+Route::get('/email-scheduler', [EmailSchedulerController::class, 'index']);
+Route::post('/schedule-email', [EmailSchedulerController::class, 'store']);
+Route::get('/scheduled-emails-status', [ScheduledEmailController::class, 'status']);
+Route::get('/api/emails', [ScheduledEmailController::class, 'getEmails']);
+
+// Redirect /schedule-email (GET) to the email scheduler form
+Route::get('/schedule-email', function() {
+    return redirect('/email-scheduler');
+});
+
+// Test route to verify database connection
+Route::get('/test-db', function() {
+    try {
+        $tables = DB::select('SHOW TABLES');
+        return response()->json([
+            'success' => true,
+            'message' => 'Database connection successful!',
+            'tables' => $tables,
+            'connection' => config('database.default')
+        ]);
+    } catch (Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage()
+        ], 500);
+    }
+});
+
+// Test route to verify scheduled_emails table
+Route::get('/test-scheduled-emails', function() {
+    try {
+        $columns = DB::getSchemaBuilder()->getColumnListing('scheduled_emails');
+        $count = DB::table('scheduled_emails')->count();
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'scheduled_emails table is accessible!',
+            'columns' => $columns,
+            'record_count' => $count
+        ]);
+    } catch (Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage()
+        ], 500);
+    }
+});
 
 Route::get('/', [PageController::class, 'index']);
 Route::post('/generate-report', [PageController::class, 'generateReport']);
