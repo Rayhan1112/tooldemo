@@ -8,9 +8,15 @@ class ScheduledEmail extends Model
     protected $fillable = [
         'recipient_email',
         'recipient_name',
+        'recipients',
         'subject',
         'body',
         'scheduled_at',
         'status'
+    ];
+
+    protected $casts = [
+        'recipients' => 'array',
+        'scheduled_at' => 'datetime',
     ];
 }

@@ -24,7 +24,8 @@ class ScheduledEmailController extends Controller
                 $scheduledIST = Carbon::createFromFormat('Y-m-d H:i:s', $email->scheduled_at, 'Asia/Kolkata');
                 $output .= "<div style='border: 1px solid #ccc; padding: 10px; margin: 10px 0;'>";
                 $output .= "<p><strong>ID:</strong> " . $email->id . "</p>";
-                $output .= "<p><strong>Recipient:</strong> " . $email->recipient_email . "</p>";
+                $recipients = $email->recipients ?: [$email->recipient_email];
+                $output .= "<p><strong>Recipients:</strong> " . implode(', ', $recipients) . "</p>";
                 $output .= "<p><strong>Subject:</strong> " . $email->subject . "</p>";
                 $output .= "<p><strong>Scheduled Time (IST):</strong> <span style='color: red;'>" . $scheduledIST->format('Y-m-d h:i:s A') . "</span></p>";
                 $output .= "<p><strong>Status:</strong> " . $email->status . "</p>";
@@ -53,9 +54,11 @@ class ScheduledEmailController extends Controller
             ->get()
             ->map(function ($email) {
                 $scheduledIST = Carbon::createFromFormat('Y-m-d H:i:s', $email->scheduled_at, 'Asia/Kolkata');
+                $recipients = $email->recipients ?: [$email->recipient_email];
                 return [
                     'id' => $email->id,
-                    'recipient_email' => $email->recipient_email,
+                    'recipient_email' => implode(', ', $recipients), // Display as comma-separated for UI
+                    'recipients' => $recipients, // Array for processing
                     'subject' => $email->subject,
                     'scheduled_at_ist' => $scheduledIST->format('Y-m-d h:i:s A'),
                     'status' => $email->status,
@@ -69,9 +72,11 @@ class ScheduledEmailController extends Controller
             ->get()
             ->map(function ($email) {
                 $scheduledIST = Carbon::createFromFormat('Y-m-d H:i:s', $email->scheduled_at, 'Asia/Kolkata');
+                $recipients = $email->recipients ?: [$email->recipient_email];
                 return [
                     'id' => $email->id,
-                    'recipient_email' => $email->recipient_email,
+                    'recipient_email' => implode(', ', $recipients), // Display as comma-separated for UI
+                    'recipients' => $recipients, // Array for processing
                     'subject' => $email->subject,
                     'scheduled_at_ist' => $scheduledIST->format('Y-m-d h:i:s A'),
                     'status' => $email->status

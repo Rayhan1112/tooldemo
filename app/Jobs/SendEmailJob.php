@@ -15,7 +15,7 @@ class SendEmailJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    protected $recipient;
+    protected $recipients;
     protected $subject;
     protected $body;
     protected $emailId;
@@ -25,9 +25,9 @@ class SendEmailJob implements ShouldQueue
      *
      * @return void
      */
-    public function __construct($recipient, $subject, $body, $emailId = null)
+    public function __construct($recipients, $subject, $body, $emailId = null)
     {
-        $this->recipient = $recipient;
+        $this->recipients = is_array($recipients) ? $recipients : [$recipients];
         $this->subject = $subject;
         $this->body = $body;
         $this->emailId = $emailId;
@@ -40,26 +40,39 @@ class SendEmailJob implements ShouldQueue
      */
     public function handle()
     {
-        try {
-            Mail::html(nl2br(e($this->body)), function ($message) {
-                $message->to($this->recipient)
-                    ->from(config('mail.from.address'), config('mail.from.name'))
-                    ->subject($this->subject);
-            });
+        Log::info('SendEmailJob started for ' . count($this->recipients) . ' recipients');
+        $successCount = 0;
+        $failCount = 0;
 
-            Log::info('Email sent to ' . $this->recipient);
+        foreach ($this->recipients as $recipient) {
+            try {
+                Mail::html(nl2br(e($this->body)), function ($message) use ($recipient) {
+                    $message->to($recipient)
+                        ->from(config('mail.from.address'), config('mail.from.name'))
+                        ->subject($this->subject);
+                });
 
-            if ($this->emailId) {
+                Log::info('Email sent to ' . $recipient);
+                $successCount++;
+            } catch (\Throwable $e) {
+                Log::error('Email failed to ' . $recipient, ['error' => $e->getMessage()]);
+                $failCount++;
+            }
+        }
+
+        if ($this->emailId) {
+            if ($failCount == 0) {
+                ScheduledEmail::where('id', $this->emailId)->update(['status' => 'sent']);
+            } elseif ($successCount == 0) {
+                ScheduledEmail::where('id', $this->emailId)->update(['status' => 'failed']);
+            } else {
+                // Partial success, maybe add a new status or keep as sent
                 ScheduledEmail::where('id', $this->emailId)->update(['status' => 'sent']);
             }
-        } catch (\Throwable $e) {
-            Log::error('Email failed to ' . $this->recipient, ['error' => $e->getMessage()]);
+        }
 
-            if ($this->emailId) {
-                ScheduledEmail::where('id', $this->emailId)->update(['status' => 'failed']);
-            }
-
-            throw $e;
+        if ($failCount > 0) {
+            throw new \Exception("Failed to send to {$failCount} recipients");
         }
     }
 }

@@ -18,13 +18,25 @@ class EmailSchedulerController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'recipient_email' => 'required|email',
-            'recipient_name'  => 'nullable|string',
-            'subject'         => 'required|string',
-            'body'            => 'required|string',
-            'scheduled_at'    => 'required'
+            'recipients'   => 'required|string',
+            'subject'      => 'required|string',
+            'body'         => 'required|string',
+            'scheduled_at' => 'required'
         ]);
-        
+
+        // Parse recipients - can be comma-separated emails
+        $recipients = array_map('trim', explode(',', $request->recipients));
+        $recipients = array_filter($recipients); // Remove empty entries
+
+        // Validate each email
+        foreach ($recipients as $email) {
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                return response()->json([
+                    'error' => "Invalid email address: {$email}"
+                ], 422);
+            }
+        }
+
         /**
          * IMPORTANT:
          * datetime-local → always treat as IST
@@ -56,8 +68,8 @@ class EmailSchedulerController extends Controller
          */
 
         ScheduledEmail::create([
-            'recipient_email' => trim($request->recipient_email),
-            'recipient_name'  => $request->recipient_name,
+            'recipient_email' => $recipients[0], // Keep for backward compatibility
+            'recipients'      => $recipients,
             'subject'         => $request->subject,
             'body'            => $request->body,
             'scheduled_at'    => $scheduledAtIST->format('Y-m-d H:i:s'),

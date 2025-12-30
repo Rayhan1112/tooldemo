@@ -20,9 +20,6 @@
 <div class="container-fluid vh-100" style="margin: 0; padding: 0;">
     <div class="header text-center mb-4">
         <h2 class="mb-3">Email Scheduler (Indian Standard Time)</h2>
-        
-  
-        
         <div class="current-time mb-3">
             Current IST Time: <span class="time-display fw-bold text-danger" id="current-time">{{ \Carbon\Carbon::now('Asia/Kolkata')->format('Y-m-d h:i:s A') }}</span>
         </div>
@@ -40,8 +37,9 @@
                             @csrf
                             
                             <div class="form-group mb-3">
-                                <label for="recipient_email" class="form-label">Recipient Email</label>
-                                <input type="email" id="recipient_email" name="recipient_email" class="form-control" placeholder="Enter recipient email" required>
+                                <label for="recipients" class="form-label">Recipient Emails</label>
+                                <textarea id="recipients" name="recipients" class="form-control" placeholder="Enter recipient email addresses (comma-separated)" rows="3" required></textarea>
+                                <small class="form-text text-muted">Enter email addresses separated by commas. Example: email1@example.com, email2@example.com</small>
                             </div>
 
 
@@ -243,7 +241,7 @@
             if (data.success) {
                 messagesDiv.innerHTML = '<div class="alert alert-success">' + escapeHtml(data.success) + '</div>';
                 // Reset form
-                document.getElementById('recipient_email').value = '';
+                document.getElementById('recipients').value = '';
                 document.getElementById('subject').value = '';
                 document.getElementById('body').value = '';
                 document.getElementById('scheduled_at').value = '';

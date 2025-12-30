@@ -31,22 +31,42 @@ class SendScheduledEmails extends Command
 
         foreach ($emails as $email) {
             try {
-                Mail::html(nl2br(e($email->body)), function ($message) use ($email) {
-                    $message->to($email->recipient_email)
-                        ->from(config('mail.from.address'), config('mail.from.name'))
-                        ->subject($email->subject);
-                });
+                // Get recipients from JSON field, fallback to single recipient_email
+                $recipients = $email->recipients ?: [$email->recipient_email];
 
-                Log::info('Email sent to ' . $email->recipient_email);
+                // Send emails directly
+                $successCount = 0;
+                $failCount = 0;
 
-                $email->update(['status' => 'sent']);
+                foreach ($recipients as $recipient) {
+                    try {
+                        Mail::html(nl2br(e($email->body)), function ($message) use ($recipient, $email) {
+                            $message->to($recipient)
+                                ->from(config('mail.from.address'), config('mail.from.name'))
+                                ->subject($email->subject);
+                        });
 
+                        Log::info('Email sent to ' . $recipient);
+                        $successCount++;
+                    } catch (\Throwable $e) {
+                        Log::error('Email failed to ' . $recipient, ['error' => $e->getMessage()]);
+                        $failCount++;
+                    }
+                }
+
+                // Update status
+                if ($failCount == 0) {
+                    $email->update(['status' => 'sent']);
+                } elseif ($successCount == 0) {
+                    $email->update(['status' => 'failed']);
+                } else {
+                    $email->update(['status' => 'sent']); // Partial success
+                }
+
+                Log::info('Emails processed for ' . count($recipients) . ' recipients: ' . $successCount . ' sent, ' . $failCount . ' failed');
             } catch (\Throwable $e) {
-
-                Log::error('Email failed to ' . $email->recipient_email, ['error' => $e->getMessage()]);
-
+                Log::error('Failed to process email for ID ' . $email->id, ['error' => $e->getMessage()]);
                 $email->update(['status' => 'failed']);
-
             }
         }
 
