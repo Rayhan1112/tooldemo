@@ -496,27 +496,18 @@ const finalSummaryText = document.getElementById('finalSummaryText');
             
             // Create PDF
             const {jsPDF} = window.jspdf;
-            const pdf = new jsPDF('p', 'mm', 'a4');
             const imgData = canvas.toDataURL('image/jpeg', 0.9);
-            
-            // Calculate dimensions to fit A4
+
+            // Calculate dimensions
             const imgWidth = 210 - 20; // A4 width minus margins
-            const pageHeight = 297 - 20; // A4 height minus margins
             const imgHeight = canvas.height * imgWidth / canvas.width;
-            let heightLeft = imgHeight;
-            let position = 10;
-            
-            // Add first page
-            pdf.addImage(imgData, 'JPEG', 10, position, imgWidth, imgHeight);
-            heightLeft -= pageHeight;
-            
-            // Add additional pages if needed
-            while (heightLeft >= 0) {
-                position = heightLeft - imgHeight;
-                pdf.addPage();
-                pdf.addImage(imgData, 'JPEG', 10, position, imgWidth, imgHeight);
-                heightLeft -= pageHeight;
-            }
+            const pdfWidth = 210;
+            const pdfHeight = imgHeight + 20; // Add margins
+
+            const pdf = new jsPDF('p', 'mm', [pdfWidth, pdfHeight]);
+
+            // Add the entire content on a single long page
+            pdf.addImage(imgData, 'JPEG', 10, 10, imgWidth, imgHeight);
             
             // Save the PDF
             pdf.save(domainName + '-evaluation-report.pdf');

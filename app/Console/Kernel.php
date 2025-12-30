@@ -14,6 +14,7 @@ class Kernel extends ConsoleKernel
     {
         // Run scheduled email sender every minute
         $schedule->command('emails:send-scheduled')->everyMinute();
+        $schedule->command('delete:old-images')->everyMinute();
     }
 
     /**

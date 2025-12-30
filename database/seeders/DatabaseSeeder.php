@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             CategorySeeder::class,
             DomainSeeder::class,
             DomainExtensionSeeder::class,
+            ImageDeletionSettingsSeeder::class,
         ]);
     }
 }

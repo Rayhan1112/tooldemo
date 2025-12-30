@@ -43,14 +43,16 @@ OUTPUT REQUIREMENTS:
 - Return VALID JSON only
 - Do NOT include markdown, comments, or explanations
 - Use natural, professional business language
-- Keep output comprehensive yet concise
+- Provide detailed content for each section (8-10 lines or more where appropriate)
+- All data should be generated as free-form text within the structure, based on real research and market knowledge, not dummy or placeholder data
+- Ensure the entire response fits within the token limit
 
 JSON STRUCTURE (follow exactly):
 
 {
   "executive_summary": {
     "title": "Professional Domain Evaluation Report: {$request->domain}",
-    "introduction": "A comprehensive 3-4 sentence executive summary introducing the domain, highlighting its core value proposition, brand potential, and strategic significance in today's digital marketplace.",
+    "introduction": "A detailed executive summary of 8-10 lines introducing the domain, highlighting its core value proposition, brand potential, and strategic significance in today's digital marketplace.",
     "key_highlights": [
       "Primary highlight about the domain's strength",
       "Secondary highlight about market potential",
@@ -58,17 +60,17 @@ JSON STRUCTURE (follow exactly):
     ]
   },
   "market_research": {
-    "industry_analysis": "Detailed analysis of relevant industry trends, market demand patterns, and competitive landscape that validate the domain's commercial potential.",
-    "seo_potential": "Analysis of SEO opportunities and organic traffic potential.",
-    "competitive_landscape": "Overview of competing domains and differentiation factors."
+    "industry_analysis": "Provide a detailed analysis in 8-10 lines of relevant industry trends, market demand patterns, and competitive landscape that validate the domain's commercial potential.",
+    "seo_potential": "Provide a detailed analysis in 8-10 lines of SEO opportunities and organic traffic potential.",
+    "competitive_landscape": "Provide a detailed overview in 8-10 lines of competing domains and differentiation factors."
   },
   "trademark_research": {
-    "conflict_analysis": "Analysis of potential trademark conflicts.",
-    "brand_safety": "Assessment of brand safety factors."
+    "conflict_analysis": "Provide a detailed analysis in 8-10 lines of potential trademark conflicts.",
+    "brand_safety": "Provide a detailed assessment in 8-10 lines of brand safety factors."
   },
   "keyword_research": {
-    "search_volume": "Search volume analysis.",
-    "cpc_analysis": "CPC and advertiser demand analysis.",
+    "search_volume": "Provide a detailed analysis in 8-10 lines of search volume.",
+    "cpc_analysis": "Provide a detailed analysis in 8-10 lines of CPC and advertiser demand.",
     "opportunity_keywords": [
       "Keyword 1",
       "Keyword 2",
@@ -76,15 +78,18 @@ JSON STRUCTURE (follow exactly):
     ]
   },
   "competitor_research": {
-    "analysis": "Competitor market analysis.",
-    "competitors": [
-      { "name": "Competitor A", "domain": "exampleA.com", "price": "$1,500 - $2,500", "strategy": "Premium" }
-    ]
-  },
+   "analysis": "Provide a detailed competitor market analysis in 8-10 lines, including compulsory research data on market share, pricing strategies, and competitive advantages. Research and provide real competitor data based on the domain's industry.",
+   "competitors": [
+     { "name": "Real Competitor Name 1", "domain": "realcompetitor1.com", "price": "Actual price range based on research", "strategy": "Detailed real strategy description" },
+     { "name": "Real Competitor Name 2", "domain": "realcompetitor2.com", "price": "Actual price range based on research", "strategy": "Detailed real strategy description" },
+     { "name": "Real Competitor Name 3", "domain": "realcompetitor3.com", "price": "Actual price range based on research", "strategy": "Detailed real strategy description" },
+     { "name": "Real Competitor Name 4", "domain": "realcompetitor4.com", "price": "Actual price range based on research", "strategy": "Detailed real strategy description" }
+   ]
+ },
   "valuation": {
-    "title": "The Domain Name {$request->domain} Is For Sale",
-    "about": "Professional valuation paragraph.",
-    "expected_price": "USD price range",
+   "title": "Generate an appropriate title for the domain valuation, only include 'For Sale' if the domain is genuinely available for purchase based on research.",
+   "about": "Provide a detailed professional valuation paragraph in 8-10 lines.",
+   "expected_price": "Provide a realistic USD price range based on market research and competitor analysis.",
     "top_uses": [
       { "industry": "Industry", "use": "Use case" }
     ],
@@ -92,7 +97,8 @@ JSON STRUCTURE (follow exactly):
       "Industry A",
       "Industry B"
     ]
-  }
+  },
+  "final_summary": "Provide a detailed final summary in 8-10 lines synthesizing the key findings from all sections, tailored to the domain."
 }
 
 FINAL CHECK:
@@ -100,15 +106,34 @@ FINAL CHECK:
 - No extra text before or after JSON
 PROMPT;
 
-            $response = $client->chat()->create([
-                'model' => 'gpt-4o-mini',
-                'messages' => [
-                    ['role' => 'user', 'content' => $prompt],
-                ],
-                'temperature' => 0.3,
-                'max_tokens' => 1000,
-                'response_format' => ['type' => 'json_object'],
-            ]);
+            $maxRetries = 3;
+            $retryDelay = 1; // seconds
+            $response = null;
+
+            for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+                try {
+                    $response = $client->chat()->create([
+                        'model' => 'gpt-4o-mini',
+                        'messages' => [
+                            ['role' => 'user', 'content' => $prompt],
+                        ],
+                        'temperature' => 0.3,
+                        'max_tokens' => 8000,
+                        'response_format' => ['type' => 'json_object'],
+                    ]);
+                    break; // Success, exit retry loop
+                } catch (\OpenAI\Exceptions\RateLimitException $e) {
+                    if ($attempt === $maxRetries) {
+                        throw $e; // Re-throw if max retries reached
+                    }
+                    Log::warning("OpenAI Rate Limit hit, attempt {$attempt}/{$maxRetries}, retrying in {$retryDelay}s");
+                    sleep($retryDelay);
+                    $retryDelay *= 2; // Exponential backoff
+                } catch (\Throwable $e) {
+                    // For other exceptions, don't retry
+                    throw $e;
+                }
+            }
 
             $content = $response->choices[0]->message->content;
 
@@ -123,17 +148,9 @@ PROMPT;
                 throw new \Exception('JSON parse error: ' . json_last_error_msg());
             }
 
-            if (!isset($json['valuation'], $json['executive_summary'], $json['market_research'])) {
+            if (!isset($json['valuation'], $json['executive_summary'], $json['market_research'], $json['final_summary'])) {
                 throw new \Exception('Missing required JSON sections');
             }
-
-            /**
-             * ✅ FINAL SUMMARY (DERIVED — NO PROMPT CHANGE)
-             */
-            $json['final_summary'] =
-                "Based on the overall analysis, {$request->domain} demonstrates strong branding potential supported by favorable market conditions and clear commercial applicability. " .
-                "The domain aligns well with current industry demand, shows positive SEO and keyword monetization opportunities, and presents manageable trademark considerations. " .
-                "With a realistic valuation and multiple viable use cases across relevant industries, this domain represents a credible digital asset suitable for investment, branding, or business development purposes.";
 
             return response()->json([
                 'success' => true,

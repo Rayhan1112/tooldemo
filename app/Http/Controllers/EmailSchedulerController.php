@@ -18,10 +18,11 @@ class EmailSchedulerController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'recipients'       => 'required|string',
-            'subject'          => 'required|string',
-            'body'             => 'required|string',
-            'scheduled_at'     => 'required'
+            'recipient_email' => 'required|email',
+            'recipient_name'  => 'nullable|string',
+            'subject'         => 'required|string',
+            'body'            => 'required|string',
+            'scheduled_at'    => 'required'
         ]);
         
         /**
@@ -33,17 +34,17 @@ class EmailSchedulerController extends Controller
             $request->scheduled_at,
             'Asia/Kolkata'
         );
-        
+
         // Current IST time
         $nowIST = Carbon::now('Asia/Kolkata');
-        
+
         if ($scheduledAtIST->lessThanOrEqualTo($nowIST)) {
             if (request()->ajax() || request()->wantsJson()) {
                 return response()->json([
                     'error' => 'Scheduled time must be in the future (IST). Current time: ' . $nowIST->format('d-m-Y h:i A')
                 ], 422);
             }
-            
+
             return back()
                 ->withInput()
                 ->with('error', 'Scheduled time must be in the future (IST). Current time: ' . $nowIST->format('d-m-Y h:i A'));
@@ -53,35 +54,26 @@ class EmailSchedulerController extends Controller
          * STORE AS STRING (IST LOCKED)
          * This avoids Laravel/DB timezone auto-conversion
          */
-        
-        // Create a scheduled email record for each recipient
-        $recipients = explode(',', $request->recipients);
-        $createdCount = 0;
-        
-        foreach ($recipients as $recipient) {
-            $recipient = trim($recipient);
-            
-            if (!empty($recipient) && filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
-                ScheduledEmail::create([
-                    'recipient_email' => $recipient,
-                    'subject'         => $request->subject,
-                    'body'            => $request->body,
-                    'scheduled_at'    => $scheduledAtIST->format('Y-m-d H:i:s'),
-                    'status'          => 'pending'
-                ]);
-                $createdCount++;
-            }
-        }
+
+        ScheduledEmail::create([
+            'recipient_email' => trim($request->recipient_email),
+            'recipient_name'  => $request->recipient_name,
+            'subject'         => $request->subject,
+            'body'            => $request->body,
+            'scheduled_at'    => $scheduledAtIST->format('Y-m-d H:i:s'),
+            'status'          => 'pending'
+        ]);
 
         if (request()->ajax() || request()->wantsJson()) {
             return response()->json([
-                'success' => $createdCount . ' email(s) scheduled for ' . $scheduledAtIST->format('d-m-Y h:i A') . ' (IST)'
+                'success' => 'Email scheduled for ' . $scheduledAtIST->format('d-m-Y h:i A') . ' (IST)'
             ]);
         }
-        
+
         return back()->with(
             'success',
-            $createdCount . ' email(s) scheduled for ' . $scheduledAtIST->format('d-m-Y h:i A') . ' (IST)'
+            'Email scheduled for ' . $scheduledAtIST->format('d-m-Y h:i A') . ' (IST)'
         );
     }
+
 }

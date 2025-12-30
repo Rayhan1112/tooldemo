@@ -23,7 +23,7 @@ class SendScheduledEmails extends Command
         // Get all pending emails and filter by time in IST
         $pendingEmails = ScheduledEmail::where('status', 'pending')->get();
         $emails = $pendingEmails->filter(function ($email) use ($now) {
-            $emailTime = Carbon::parse($email->scheduled_at)->setTimezone('Asia/Kolkata');
+            $emailTime = Carbon::createFromFormat('Y-m-d H:i:s', $email->scheduled_at, 'Asia/Kolkata');
             return $emailTime->lte($now);
         });
 
@@ -31,26 +31,22 @@ class SendScheduledEmails extends Command
 
         foreach ($emails as $email) {
             try {
-                Log::info('Attempting email to ' . $email->recipient_email);
-
                 Mail::html(nl2br(e($email->body)), function ($message) use ($email) {
                     $message->to($email->recipient_email)
                         ->from(config('mail.from.address'), config('mail.from.name'))
                         ->subject($email->subject);
                 });
 
+                Log::info('Email sent to ' . $email->recipient_email);
+
                 $email->update(['status' => 'sent']);
 
-                Log::info('Email SENT to ' . $email->recipient_email);
+            } catch (\Throwable $e) {
 
-            } catch (Throwable $e) {
+                Log::error('Email failed to ' . $email->recipient_email, ['error' => $e->getMessage()]);
 
                 $email->update(['status' => 'failed']);
 
-                Log::error('Email FAILED', [
-                    'email' => $email->recipient_email,
-                    'error' => $e->getMessage()
-                ]);
             }
         }
 

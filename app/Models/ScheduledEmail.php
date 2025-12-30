@@ -12,5 +12,5 @@ class ScheduledEmail extends Model
         'body',
         'scheduled_at',
         'status'
-    ]; 
+    ];
 }

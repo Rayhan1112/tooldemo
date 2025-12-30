@@ -6,6 +6,7 @@ use App\Http\Controllers\PageController;
 use App\Http\Controllers\DomainReportController;
 use App\Http\Controllers\EmailSchedulerController;
 use App\Http\Controllers\ScheduledEmailController;
+use App\Http\Controllers\ImageUploadController;
 
 /*
 |--------------------------------------------------------------------------
@@ -26,6 +27,7 @@ Route::get('/email-scheduler', [EmailSchedulerController::class, 'index']);
 Route::post('/schedule-email', [EmailSchedulerController::class, 'store']);
 Route::get('/scheduled-emails-status', [ScheduledEmailController::class, 'status']);
 Route::get('/api/emails', [ScheduledEmailController::class, 'getEmails']);
+Route::delete('/api/emails/{id}', [ScheduledEmailController::class, 'delete']);
 
 // Redirect /schedule-email (GET) to the email scheduler form
 Route::get('/schedule-email', function() {
@@ -80,9 +82,9 @@ Route::post('/test-openai', function() {
         if (empty($apiKey)) {
             return response()->json(['error' => 'API key not configured']);
         }
-        
+
         $client = \OpenAI::client($apiKey);
-        
+
         $response = $client->chat()->create([
             'model' => 'gpt-4o-mini',
             'messages' => [
@@ -91,13 +93,13 @@ Route::post('/test-openai', function() {
             'max_tokens' => 50,
             'temperature' => 0.1,
         ]);
-        
+
         return response()->json([
             'success' => true,
             'response' => $response->choices[0]->message->content,
             'api_key_exists' => !empty($apiKey)
         ]);
-        
+
     } catch (Exception $e) {
         return response()->json([
             'success' => false,
@@ -106,3 +108,6 @@ Route::post('/test-openai', function() {
         ], 500);
     }
 });
+
+Route::get('/image-uploader', function () { return view('image-uploader'); });
+Route::post('/upload-image', [ImageUploadController::class, 'upload']);
